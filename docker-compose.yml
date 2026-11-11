@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16
+    container_name: url_shortener-db
+    environment: 
+      POSTGRES_USER: shortener
+      POSTGRES_PASSWORD: shortener_pass
+      POSTGRES_DB: shortener_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shortener -d shortener_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - shortener-net
+
+  app:
+    build: .
+    container_name: url-shortener-app
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: shortener
+      DB_PASSWORD: shortener_pass
+      DB_NAME: shortener_db
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - shortener-net
+volumes:
+  pgdata:
+
+networks:
+  shortener-net:
+    driver: bridge
