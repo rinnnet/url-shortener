@@ -1,7 +1,7 @@
 import pytest
 import psycopg2
 import os
-from app import app as flask_app
+from app import app as flask_app, init_db
 
 
 @pytest.fixture
@@ -24,6 +24,7 @@ def clean_db():
 @pytest.fixture
 def client(clean_db):
     flask_app.config['TESTING'] = True
+    init_db()
     with flask_app.test_client() as client:
         yield client
 
@@ -36,7 +37,6 @@ def test_shorten_returns_201(client):
     assert 'short_url' in data
 
 def test_redirect_works(client):
-    """Создаём ссылку, потом GET /<code> → 302 и Location."""
     create = client.post('/shorten', json={'url': 'https://example.com/redirect-test'})
     code = create.get_json()['short_code']
 
@@ -46,13 +46,11 @@ def test_redirect_works(client):
     assert response.headers['Location'] == 'https://example.com/redirect-test'
 
 def test_redirect_unknown_code_returns_404(client):
-    """GET /nonexistent → 404."""
     response = client.get('/nonexistent-code-12345')
     assert response.status_code == 404
     assert response.get_json()['error'] == 'not found'
 
 def test_shorten_without_url_returns_400(client):
-    """POST /shorten без поля url → 400."""
     response = client.post('/shorten', json={})
     assert response.status_code == 400
     assert response.get_json()['error'] == 'url is required'
