@@ -5,7 +5,12 @@ from app import app as flask_app, init_db
 
 
 @pytest.fixture
-def clean_db():
+def init_tables():
+    init_db()
+    yield
+
+@pytest.fixture
+def clean_db(init_tables):
     conn = psycopg2.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
         port=os.environ.get('DB_PORT', '5432'),
@@ -24,7 +29,6 @@ def clean_db():
 @pytest.fixture
 def client(clean_db):
     flask_app.config['TESTING'] = True
-    init_db()
     with flask_app.test_client() as client:
         yield client
 
