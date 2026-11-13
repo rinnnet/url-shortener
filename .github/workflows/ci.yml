@@ -7,21 +7,43 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: shortener
+          POSTGRES_PASSWORD: shortener_pass
+          POSTGRES_DB: shortener_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shortener -d shortener_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t url-shortener:ci .
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      - name: Smoke test — image starts
+      - name: Install dependencies
         run: |
-          docker run -d --name test-app -p 5000:5000 \
-            -e DB_HOST=localhost \
-            url-shortener:ci
-          sleep 3
-          docker logs test-app
-          docker rm -f test-app
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: shortener
+          DB_PASSWORD: shortener_pass
+          DB_NAME: shortener_db
+        run: pytest -v
